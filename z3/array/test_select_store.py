@@ -1,29 +1,5 @@
 from z3 import *
-
-def test_composite_data_structure():
-  # int < 5 is subset of int < 5 & real < 6, but not other way around
-  Foobar = Datatype('Foobar')
-  Foobar.declare('int', ('i', IntSort()))
-  Foobar.declare('real', ('r', RealSort()))
-  Foobar = Foobar.create()
-  arr0 = Array('arr0', Foobar, BoolSort())
-  arr1 = Array('arr1', Foobar, BoolSort())
-  x, xx = Ints('x xx')
-  y, yy = Reals('y yy')
-  s = Solver()
-  fff = Int('fff')
-  aaa = Array('aaa', IntSort(), IntSort())
-  assert is_const(fff)
-  assert is_app(x)
-  assert is_const(x)
-  s.add(ForAll([fff], aaa[fff] == False))
-  s.add(ForAll([x], Implies(x < 0, arr0[Foobar.int(x)] == False)))
-  #s.add(ForAll([y], arr0[Foobar.real(y)] == False))
-  s.add(ForAll([xx], Implies(xx < 0, arr1[Foobar.int(xx)] == False)))
-  #s.add(ForAll([yy], arr1[Foobar.real(yy)] == True))
-  s.add(IsSubset(arr0, arr1))
-  assert s.check() == sat
-
+import pytest
 
 def test_func_elim_array_store():
   '''
