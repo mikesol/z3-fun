@@ -2,6 +2,16 @@ from z3 import *
 import pytest
 from functools import reduce
 
+@pytest.mark.skip # because too slow...
+def test_cannot_handle_recursively_defined_array():
+    a = Array('a', IntSort(), IntSort())
+    s = Solver()
+    x, y, c, d = Ints('x y c d')
+    s.add(a[15] == 15)
+    s.add(ForAll([x], Implies(x > 15, a[x] == a[x-1])))
+    s.add(ForAll([y], Implies(y < 15, a[y] == a[y+1])))
+    s.add(a[c] != 15)
+    assert s.check() == unknown
 
 def test_faux_recursive_function():
     to15 = RecFunction('to15', IntSort(), IntSort())
@@ -13,4 +23,29 @@ def test_faux_recursive_function():
     s = Solver()
     s.add(arr0 == lamb)
     s.add(arr0[x] != 15)
+    assert s.check() == unsat
+
+def test_flattened_recursive_structure():
+    MaybeInt = Datatype('MaybeInt')
+    MaybeInt.declare('int', ('i', IntSort()))
+    MaybeInt.declare('never')
+    MaybeInt = MaybeInt.create()
+    x = Const('x', MaybeInt)
+    arr0 = Array('arr0', MaybeInt, MaybeInt)
+    arr1 = Array('arr1', MaybeInt, MaybeInt)
+    s = Solver()
+    s.add(arr0 == Lambda([x],
+        If(
+            Or(x == MaybeInt.never, And(MaybeInt.is_int(x), MaybeInt.i(x) < 0)),
+            MaybeInt.never,
+            If(
+                MaybeInt.i(x) == 0,
+                MaybeInt.int(1),
+                MaybeInt.int(MaybeInt.i(x) * MaybeInt.i(arr0[MaybeInt.int(MaybeInt.i(x) - 1)]))))))
+    s.push()
+    s.add(arr0[MaybeInt.int(5)] == MaybeInt.int(5 * 4  * 3 * 2 * 1))
+    assert s.check() == sat
+    s.pop()
+    s.push()
+    s.add(arr0[MaybeInt.int(6)] == MaybeInt.int(5 * 4  * 3 * 2 * 1))
     assert s.check() == unsat
