@@ -129,4 +129,38 @@ def test_non_compiling_program_2():
     a
     // should not compile because parts of everything are not in the domain of +
     '''
-    pass
+    '''
+    a = 1
+    b = 2
+    +no1 = f- + 1
+    +no1' = f- +no1 1 // fails here
+    a
+    // should not compile because 1 not in domain of +no1
+    '''
+    s = Solver()
+    # line 1
+    a = Int('a')
+    s.add(a == 1)
+    assert s.check() == sat
+    # line 2
+    b = Int('b')
+    s.add(b == 2)
+    assert s.check() == sat
+    # line 3
+    # One strategy is to construct the everything datatype dynamically
+    # from the currently available values and then determine if the incoming set has
+    # the same accessors
+    c__ = ArraySort(IntSort(), IntSort())
+    c_ = Array('c_', IntSort(), c__)
+    c_free_0, c_free_1 = Ints('c_free_0 c_free_1')
+    s.add(c_ == Lambda([c_free_0], Lambda([c_free_1], c_free_0 + c_free_1)))
+    UnknownSort = DeclareSort('UnknownSort')
+    Unknown = Const('Unknown', UnknownSort)
+    Everything = Datatype('Everything')
+    Everything.declare('int', ('i', IntSort()))
+    Everything.declare('unknown', ('u', UnknownSort)) # everthings always have an unknown to distinguish as everything
+    Everything = Everything.create()
+    # kind of hackish here - basically, we'd need something to iterate
+    # over function declarations attached to the datatype and line them up
+    assert Everything.i.range() == c_.sort().domain()
+    assert Everything.u.range() != c_.sort().domain() # so this is where it breaks
