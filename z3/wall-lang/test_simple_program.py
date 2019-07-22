@@ -162,5 +162,14 @@ def test_non_compiling_program_2():
     Everything = Everything.create()
     # kind of hackish here - basically, we'd need something to iterate
     # over function declarations attached to the datatype and line them up
+    # the everything constructor would always have to delay evaluation
+    # so that it created the world anew every time
+    # for example, if we have `a = map everything id` and later we
+    # want to use `a`, it needs to recreate the world again
+    # in general, one strategy could be that for everything we encounter,
+    # we create the world and set the appropriate things to never
+    # for example, 1 would be World.int(1)
+    # In this way, `+ 3 'foo` would construct a plus with a World of string and int,
+    # set everything not int to never, and then fail because it gets World.string('foo')
     assert Everything.i.range() == c_.sort().domain()
     assert Everything.u.range() != c_.sort().domain() # so this is where it breaks
