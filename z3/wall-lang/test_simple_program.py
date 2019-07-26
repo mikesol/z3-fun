@@ -26,6 +26,123 @@ def test_simple_program():
     s.add(c == c_[a][b])
     assert s.check() == sat
 
+
+def test_simple_program_using_set_to_represent_addition():
+    '''
+    a = 1
+    b = 2
+    c = + b a
+    c
+    // should compile
+    '''
+    s = Solver()
+    # line 1
+    a = Int('a')
+    s.add(a == 1)
+    assert s.check() == sat
+    # line 2
+    b = Int('b')
+    s.add(b == 2)
+    assert s.check() == sat
+    # line 3
+    c = Int('c')
+    i_i_pair, mk_i_i_pair, (i_i_first, i_i_second) = TupleSort("i_i_pair", [IntSort(), IntSort()])
+    i_si_pair, mk_i_si_pair, (i_si_first, i_si_second) = TupleSort("i_si_pair", [IntSort(), SetSort(i_i_pair)])
+    free_i_si_pair = Const('free_i_si_pair', i_si_pair)
+    free_i_i = Const('free_i_i', i_i_pair)
+    addition = Const('addition', SetSort(i_si_pair))
+    s.add(addition == Lambda([free_i_si_pair],
+        i_si_second(free_i_si_pair) == Lambda([free_i_i],
+            i_si_first(free_i_si_pair) + i_i_first(free_i_i) == i_i_second(free_i_i))))
+    res = Const('res', i_si_pair)
+    subres = Const('subres', i_i_pair)
+    s.add(addition[res])
+    s.add(i_si_first(res) == a)
+    s.add(i_i_first(subres) == b)
+    s.add(i_si_second(res)[subres])
+    s.add(c == i_i_second(subres))
+    assert s.check() == sat
+    # above here, we have proven that the program is possible
+    # below, we prove that the result is 3 and not 4
+    s.push()
+    s.add(i_i_second(subres) == 3)
+    assert s.check() == sat
+    s.pop()
+    s.push()
+    s.add(i_i_second(subres) == 4)
+    assert s.check() == unsat
+
+def test_simple_program_with_conditional():
+    '''
+    a = rand 0
+    b = ? < a 0.5 0 1
+    c = + 3 b
+    c
+    // should compile
+    '''
+    s = Solver()
+    # line 1
+    a = Real('a')
+    s.add(a >= 0)
+    s.add(a < 1)
+    assert s.check() == sat
+    # line 2
+    r_r_pair, mk_r_r_pair, (r_r_first, r_r_second) = TupleSort("r_r_pair", [RealSort(), BoolSort()])
+    r_sr_pair, mk_r_sr_pair, (r_sr_first, r_sr_second) = TupleSort("r_sr_pair", [RealSort(), SetSort(r_r_pair)])
+    free_r_sr_pair = Const('free_r_sr_pair', r_sr_pair)
+    free_r_r = Const('free_r_r', r_r_pair)
+    lessthan = Const('lessthan', SetSort(r_sr_pair))
+    s.add(lessthan == Lambda([free_r_sr_pair],
+        r_sr_second(free_r_sr_pair) == Lambda([free_r_r],
+            (r_sr_first(free_r_sr_pair) < r_r_first(free_r_r)) == r_r_second(free_r_r))))
+    _b_res = Const('_b_res', r_sr_pair)
+    _b_subres = Const('_b_subres', r_r_pair)
+    s.add(lessthan[_b_res])
+    s.add(r_sr_first(_b_res) == a)
+    s.add(r_r_first(_b_subres) == 0.5)
+    s.add(r_sr_second(_b_res)[_b_subres])
+    _tf_result = r_r_second(_b_subres)
+    b = Int('b')
+    b_i_pair, mk_b_i_pair, (b_i_first, b_i_second) = TupleSort("b_i_pair", [BoolSort(), IntSort()])
+    if_now = EmptySet(b_i_pair)
+    if_now = Store(if_now, mk_b_i_pair(_tf_result, 0), True)
+    if_now = Store(if_now, mk_b_i_pair(Not(_tf_result), 1), True)
+    free_b_i_pair = Const('free_b_i_pair', b_i_pair)
+    s.add(if_now[free_b_i_pair])
+    s.add(b == b_i_second(free_b_i_pair))
+    assert s.check() == sat
+    # line 3
+    c = Int('c')
+    i_i_pair, mk_i_i_pair, (i_i_first, i_i_second) = TupleSort("i_i_pair", [IntSort(), IntSort()])
+    i_si_pair, mk_i_si_pair, (i_si_first, i_si_second) = TupleSort("i_si_pair", [IntSort(), SetSort(i_i_pair)])
+    free_i_si_pair = Const('free_i_si_pair', i_si_pair)
+    free_i_i = Const('free_i_i', i_i_pair)
+    addition = Const('addition', SetSort(i_si_pair))
+    s.add(addition == Lambda([free_i_si_pair],
+        i_si_second(free_i_si_pair) == Lambda([free_i_i],
+            i_si_first(free_i_si_pair) + i_i_first(free_i_i) == i_i_second(free_i_i))))
+    res = Const('res', i_si_pair)
+    subres = Const('subres', i_i_pair)
+    s.add(addition[res])
+    s.add(i_si_first(res) == 3)
+    s.add(i_i_first(subres) == b)
+    s.add(i_si_second(res)[subres])
+    s.add(c == i_i_second(subres))
+    assert s.check() == sat
+    # above here, we have proven that the program is possible
+    # below, we prove that the result could be 3 or 4, but not 5
+    s.push()
+    s.add(i_i_second(subres) == 3) # 3 + 0
+    assert s.check() == sat
+    s.pop()
+    s.push()
+    s.add(i_i_second(subres) == 4) # 3 + 1
+    assert s.check() == sat
+    s.pop()
+    s.push()
+    s.add(i_i_second(subres) == 5)
+    assert s.check() == unsat
+
 def test_non_compiling_program_0():
     '''
     a = 1

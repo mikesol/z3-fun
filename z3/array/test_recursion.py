@@ -26,6 +26,9 @@ def test_faux_recursive_function():
     assert s.check() == unsat
 
 def test_flattened_recursive_structure():
+    '''
+    It is possible to 
+    '''
     MaybeInt = Datatype('MaybeInt')
     MaybeInt.declare('int', ('i', IntSort()))
     MaybeInt.declare('never')
