@@ -9,10 +9,12 @@ def test_nested_datatype():
     l0 = l0.create()
     dts = [l0]
     # anything bigger than 14 and it starts going crazy!
-    for x in range(14):
+    LIMIT = 1000
+    for x in range(LIMIT):
         ndt = Datatype('l%d' % (x + 1))
-        ndt.declare('s', ('_s', SetSort(dts[-1])))
-        ts, _, _ = TupleSort('l%dt' % (x + 1), [dts[-1], dts[-1]])
-        ndt.declare('p', ('_p', ts))
-        ndt.declare('o', ('_o', dts[-1]))
+        ndt.declare('s%d' % (x+1), ('_s%d' % (x+1), SetSort(dts[-1])))
+        # wow, ndt works but dts[-1] does not work for tuple!!
+        #ndt.declare('p%d' % (x + 1), ('_left%d' % (x + 1), ndt), ('_right%d' % (x + 1), dts[-1]))        
+        ndt.declare('s%d' % (x+1), ('_s%d' % (x+1), ArraySort(dts[-1], dts[-1])))
+        ndt.declare('o%d' % (x + 1), ('_o%d' % (x + 1), dts[-1]))        
         dts.append(ndt.create())
