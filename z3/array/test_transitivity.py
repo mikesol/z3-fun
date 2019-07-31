@@ -13,10 +13,10 @@ def test_transitive():
   assert s.check() == sat
   s.pop()
   s.push()
-  s.add(a != b)
-  assert s.check() == unsat
+  s.add(Not(Exists([w,z], b[w][z] != a[w][z])))
+  assert s.check() == sat
 
-@pytest.mark.skip
+#@pytest.mark.skip
 def test_not_transitive():
   binop = ArraySort(IntSort(), ArraySort(IntSort(), IntSort()))
   a, b = Consts('a b', binop)
@@ -31,8 +31,9 @@ def test_not_transitive():
   assert s.check() == sat
   s.pop()
   s.push()
-  s.add(a == b)
-  assert s.check() == unsat
+  #s.add(a == b) # does not get what we want...
+  s.add(Exists([w,z], b[w][z] != a[w][z]))
+  assert s.check() == sat
 
 def test_not_transitive2():
   a = Function('a', IntSort(), IntSort(), IntSort())

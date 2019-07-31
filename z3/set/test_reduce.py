@@ -253,7 +253,7 @@ def test_reduce_with_known_entities():
     return If(Not(arr[l[0]]), 0, l[0] + (0 if len(l) == 1 else final_stmt(l[1:])))
   sm = final_stmt(poss)
   s.push()
-  s.add(sm == 1)
+  s.add(sm == 5) # interesting that z3 yields sat if this is higher!
   assert s.check() == unsat
   s.pop()
   s.push()
