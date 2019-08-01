@@ -113,6 +113,37 @@ def test_mseq_hangs():
   assert fp.query(mc(5,120)) == sat
   assert fp.query(mc(5,24)) == unsat
 
+def test_aoc():
+  one_less = Function('one_less', SetSort(IntSort()), SetSort(IntSort()), BoolSort())
+  length = Function('one_less', SetSort(IntSort()), IntSort(), BoolSort())
+  add = Function('add', IntSort(), IntSort(), IntSort(), BoolSort())
+  es = EmptySet(IntSort())
+  fs = FullSet(IntSort())
+  x, y, z = Ints('x y z')
+  a, b = Consts('a b', SetSort(IntSort()))
+  fp = Fixedpoint()
+
+  # len z = if z is empty 0 else 1 + len(ol(z))
+
+  fp.declare_var(x,y,z,a,b)
+  fp.register_relation(one_less, length, add)
+  fp.rule(add(x,y,x+y))
+  fp.rule(one_less(a, b),
+          [
+            ForAll(x, Implies(Not(a[x]), Not(b[x]))),
+            Exists(x, And(a[x], Not(b[x]))),
+            Exists(x, ForAll(y, If(x==y, True, b[y]) == a[y]))])
+  fp.rule(length(a, 0), ForAll(x, Not(a[x])))
+  fp.rule(length(a, x), [Exists(y, a[y]), add(1, y, x), length(b, y), one_less(a, b)])
+
+  assert fp.query(length(es, 0)) == sat
+  assert fp.query(length(es, 1)) == unsat
+  assert fp.query(length(Store(es, 0, True), 1)) == sat
+  assert fp.query(length(Store(Store(es, 0, True), 1, True), 2)) == sat
+  assert fp.query(length(Lambda(x, And(x >= 0, x < 2)), 2)) == sat # struggles with anything over 2
+  #assert fp.query(length(Store(es, 0, True), 0)) == unsat # struggles with unsat
+
+@pytest.mark.skip
 def test_mseq():
   mul = Function('mul', IntSort(), IntSort(), IntSort(), BoolSort())
   add = Function('add', IntSort(), IntSort(), IntSort(), BoolSort())
