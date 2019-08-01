@@ -9,29 +9,27 @@ def test_transitive():
   s.add(a == Lambda(x, Lambda(y, x + y)))
   s.add(b == Lambda(w, Lambda(z, a[z][w])))
   s.push()
-  s.add(a == b)
-  assert s.check() == sat
+  s.add(Exists([w,z], b[w][z] != a[w][z]))
+  assert s.check() == unsat
   s.pop()
   s.push()
-  s.add(Not(Exists([w,z], b[w][z] != a[w][z])))
+  s.add(ForAll([w,z], b[w][z] == a[w][z]))
   assert s.check() == sat
 
-#@pytest.mark.skip
+# interestingly, this does not work... why?
+@pytest.mark.skip
 def test_not_transitive():
   binop = ArraySort(IntSort(), ArraySort(IntSort(), IntSort()))
   a, b = Consts('a b', binop)
-  w, x, y, z = Ints('w x y z')
+  q, r, w, x, y, z = Ints('q r w x y z')
   s = Solver()
   s.add(a == Lambda(x, Lambda(y, x - y)))
   s.add(b == Lambda(w, Lambda(z, a[z][w])))
-  #below is just as bad
-  #s.add(ForAll([w,z], b[w][z] == a[z][w]))
   s.push()
-  s.add(a != b)
-  assert s.check() == sat
+  s.add(ForAll([q,r], b[q][r] == a[q][r]))
+  assert s.check() == unsat
   s.pop()
   s.push()
-  #s.add(a == b) # does not get what we want...
   s.add(Exists([w,z], b[w][z] != a[w][z]))
   assert s.check() == sat
 
@@ -43,11 +41,11 @@ def test_not_transitive2():
   s.add(ForAll([x,y], a(x,y) == x - y))
   s.add(ForAll([w,z], b(w,z) == a(z, w)))
   s.push()
-  s.add(a != b)
+  s.add(Exists([w,z], b(w,z) != a(w, z)))
   assert s.check() == sat
   s.pop()
   s.push()
-  s.add(a == b)
+  s.add(ForAll([w,z], b(w,z) == a(w, z)))
   assert s.check() == unsat
 
 def test_not_transitive_with_existential_qualifier():

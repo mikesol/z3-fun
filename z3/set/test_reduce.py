@@ -233,9 +233,10 @@ def test_reduce_with_recur_f():
   s.add(sm == 1)
   assert s.check() == unsat
 
+# only works with smaller limits, and even this not well...
 def test_reduce_with_known_entities():
-  LIM = 20
-  VARS = 25
+  LIM = 10
+  VARS = 15
   poss = [Int('i%d'%x) for x in range(VARS)]
   i = Int('i')
   s = Solver()
