@@ -127,7 +127,7 @@ def test_aoc():
 
   fp.declare_var(x,y,z,a,b)
   fp.register_relation(one_less, length, add)
-  fp.rule(add(x,y,x+y))
+  fp.fact(add(x,y,x+y))
   fp.rule(one_less(a, b), # one_less doesn't represent a function as anything can be chosen...
           [
             ForAll(x, Implies(Not(a[x]), Not(b[x]))),
@@ -142,6 +142,42 @@ def test_aoc():
   assert fp.query(length(Store(Store(es, 0, True), 1, True), 2)) == sat
   assert fp.query(length(Lambda(x, And(x >= 0, x < 2)), 2)) == sat # struggles with anything over 2
   #assert fp.query(length(Store(es, 0, True), 0)) == unsat # struggles with unsat
+
+# does not work
+# stuff like a[x] looks fishy...
+# has(a, x, a[x]) also doesn't work
+# because it introduces two unknowns that are not resolved in the body of the horn clause
+# in max_s(a, x), x can only be resolved at the very end, can't be otherwise used when reasoning about a
+@pytest.mark.skip
+def test_aoc_max():
+  rme = Function('rme', SetSort(IntSort()), IntSort(), SetSort(IntSort()), BoolSort())
+  max_s = Function('max_s', SetSort(IntSort()), IntSort(), BoolSort())
+  length = Function('one_less', SetSort(IntSort()), IntSort(), BoolSort())
+  add = Function('add', IntSort(), IntSort(), IntSort(), BoolSort())
+  es = EmptySet(IntSort())
+  fs = FullSet(IntSort())
+  w, x, y, z = Ints('w x y z')
+  a, b = Consts('a b', SetSort(IntSort()))
+  fp = Fixedpoint()
+
+  # len z = if z is empty 0 else 1 + len(ol(z))
+
+  fp.declare_var(x,y,z,a,b)
+  fp.register_relation(rme, max_s, length, add)
+  fp.fact(add(x,y,x+y))
+  fp.fact(rme(a, x, SetDel(a,x)))
+  fp.rule(max_s(a, 0), ForAll(x, Not(a[x])))
+  fp.rule(max_s(a, x), And(a[x], ForAll(y, Implies(a[y], y < x))))
+  fp.rule(length(a, 0), ForAll(x, Not(a[x])))
+  fp.rule(length(a, x), [Exists(w, a[w]), add(1, y, x), length(b, y), rme(a, z, b), max_s(a, z)])
+
+  assert fp.query(length(es, 0)) == sat
+  assert fp.query(length(es, 1)) == unsat
+  assert fp.query(length(Store(es, 0, True), 1)) == sat
+  assert fp.query(length(Store(Store(es, 0, True), 1, True), 2)) == sat
+  assert fp.query(length(Lambda(x, And(x >= 0, x < 2)), 2)) == sat # struggles with anything over 2
+  #assert fp.query(length(Store(es, 0, True), 0)) == unsat # struggles with unsat
+
 
 @pytest.mark.skip
 def test_mseq():
