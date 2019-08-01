@@ -128,7 +128,7 @@ def test_aoc():
   fp.declare_var(x,y,z,a,b)
   fp.register_relation(one_less, length, add)
   fp.rule(add(x,y,x+y))
-  fp.rule(one_less(a, b),
+  fp.rule(one_less(a, b), # one_less doesn't represent a function as anything can be chosen...
           [
             ForAll(x, Implies(Not(a[x]), Not(b[x]))),
             Exists(x, And(a[x], Not(b[x]))),
