@@ -140,21 +140,27 @@ def test_ll_sum_custom_function():
   set_sum = Function('set_sum', IntSort(), IntSort(), BoolSort())
   cons = Function('cons', IntSort(), IntSort(), IntSort(), BoolSort())
   car = Function('car', IntSort(), IntSort(), BoolSort())
-  has = Function('has', IntSort(), IntSort(), BoolSort())
+  has = Function('has', IntSort(), IntSort(), BoolSort(), BoolSort())
   add = Function('add', IntSort(), IntSort(), IntSort(), BoolSort())
+  eqq = Function('eqq', IntSort(), IntSort(), BoolSort(), BoolSort())
+  orr = Function('orr', BoolSort(), BoolSort(), BoolSort(), BoolSort())
   a,b,c,d,e,f,g,h,i = Ints('a b c d e f g h i')
   x,y,z = Bools('x y z')
   
   fp = Fixedpoint()
   fp.declare_var(a,b,c,d,e,f,g,h,i,x,y,z)
-  fp.register_relation(list_sum, set_sum, cons, add, car, has)
+  fp.register_relation(list_sum, set_sum, cons, add, car, has, eqq, orr)
   fp.fact(add(a, b, a + b))
+  fp.rule(eqq(a,b,a==b))
+  fp.rule(orr(x,y,Or(x,y)))
   fp.rule(list_sum(a, 0), a <= 0)
+  fp.rule(set_sum(a, 0), a <= 0)
   fp.rule(car(a, b), [a > 0, cons(b, a - 1, a)])
   fp.rule(list_sum(a, i), [a > 0, cons(b, a - 1, a), list_sum(a - 1, c), add(b, c, i)])
-  #fp.rule(set_sum(a, i), [And(a > 0, Not(has(a-1, i))), cons(b, a - 1, a), set_sum(a - 1, c), add(b, c, i)])
-  #fp.rule(set_sum(a, i), [And(a > 0, has(a-1, i)), set_sum(a - 1, i)])
-  fp.rule(has(a, b), [a > 0, cons(c, a - 1, a), Or(has(a - 1, b), c == b)])
+  fp.rule(set_sum(a, i), [a > 0, has(a-1, i, False), cons(b, a - 1, a), set_sum(a - 1, c), add(b, c, i)])
+  fp.rule(set_sum(a, i), [a > 0, has(a-1, i, True), set_sum(a - 1, i)])
+  fp.rule(has(0, b, False))
+  fp.rule(has(a, b, x), [a > 0, cons(c, a - 1, a), has(a - 1, b, y), eqq(c, b, z), orr(y, z, x)])
   assert fp.query(list_sum(0, 0)) == sat
   fp.fact(cons(5, 0, 1))
   fp.fact(cons(6, 1, 2))
@@ -163,16 +169,21 @@ def test_ll_sum_custom_function():
   assert fp.query(list_sum(2,12)) == unsat
   assert fp.query(list_sum(2,11)) == sat
   assert fp.query(list_sum(4,22)) == sat
-  #assert fp.query(set_sum(4,22)) == unsat
+  assert fp.query(list_sum(4,16)) == unsat
+  #assert fp.query(set_sum(4,16)) == unsat
   #assert fp.query(set_sum(4,11)) == sat 
   assert fp.query(car(1, 5)) == sat
   assert fp.query(car(1, 6)) == unsat
-  assert fp.query(has(2, 6)) == sat
-  assert fp.query(has(2, 5)) == sat
-  assert fp.query(has(2, 4)) == unsat
-  assert fp.query(has(0, 4)) == unsat
-  assert fp.query(has(0, 5)) == unsat
-  assert fp.query(has(1, 5)) == sat
+  assert fp.query(has(2, 5, True)) == sat
+  assert fp.query(has(2, 6, True)) == sat
+  assert fp.query(has(2, 6, False)) == unsat
+  assert fp.query(has(4, 6, False)) == unsat
+  assert fp.query(has(4, 6, True)) == sat
+  assert fp.query(has(2, 5, True)) == sat
+  assert fp.query(has(2, 4, True)) == unsat
+  assert fp.query(has(0, 4, True)) == unsat
+  assert fp.query(has(0, 5, True)) == unsat
+  assert fp.query(has(1, 5, True)) == sat
 
 @pytest.mark.skip
 def test_aoc():
