@@ -165,7 +165,8 @@ def test_ll_sum_custom_function():
   fp.rule(set_len(a, i), [a > 0, cons(b, a - 1, a), does_not_have(a-1, b), set_len(a - 1, c), add(1, c, i)])
   fp.rule(set_len(a, i), [a > 0, cons(b, a - 1, a), has(a-1, b), set_len(a - 1, i)])
   fp.rule(has(a, b), [a > 0, cons(c, a - 1, a), Or(c == b, has(a - 1, b))])
-  fp.rule(inf_seq(a, b), [inf_seq(a+1, c), cons(a, c, c + 1)])
+  # (cons a (inf-seq (+ a 1)))
+  fp.rule(inf_seq(a, b), [inf_seq(a+1, c), cons(a, c, a)])
   fp.fact(does_not_have(0, b))
   fp.rule(does_not_have(a, b), [a > 0, cons(c, a - 1, a), And(c != b, does_not_have(a - 1, b))])
   # build our list
