@@ -135,12 +135,36 @@ def test_ll_len_with_cdr():
   assert fp.query(length(ll.end, 0)) == sat
   assert fp.query(length(ll.cons(0, ll.end), 1)) == sat
 
+def test_encoding_partial_application():
+  P = Datatype('P')
+  P.declare('P')
+  P = P.create()
+  partial_add= Function('partial_add', IntSort(), P, BoolSort())
+  resolved_add=Function('resolved_add', P, IntSort(), IntSort(), BoolSort())
+  fp = Fixedpoint()
+  p, q = Consts('p q', P)
+  x,y,z = Ints('x y z')
+  fp.declare_var(p, q, x, y, z)
+  fp.register_relation(partial_add, resolved_add)
+  fp.rule(resolved_add(p, y, z), [partial_add(x, p), z == x + y])
+  # curry 5
+  fp.fact(partial_add(5, p))
+  fp.fact(partial_add(12, q))
+  assert fp.query(resolved_add(p, 11, 16)) == sat
+  assert fp.query(resolved_add(p, 11, 15)) == unsat
+  assert fp.query(resolved_add(q, 11, 23)) == sat
+  assert fp.query(resolved_add(q, 11, 12)) == unsat
+
+# works well, but impossible to incode infinite sequences meaningfully
+# sequences seem to need to be bound with a terminating condition to
+# get anything useful, and furthermore, even if they weren't, it is
+# not clear how it would be possible to construct an infinite sequence
+# for uncountable things (ie reals)
 def test_ll_sum_custom_function():
   list_sum = Function('list_sum', IntSort(), IntSort(), BoolSort())
   set_sum = Function('set_sum', IntSort(), IntSort(), BoolSort())
   list_len = Function('list_len', IntSort(), IntSort(), BoolSort())
   set_len = Function('set_len', IntSort(), IntSort(), BoolSort())
-  inf_seq = Function('inf_seq', IntSort(), IntSort(), BoolSort())
   cons = Function('cons', IntSort(), IntSort(), IntSort(), BoolSort())
   car = Function('car', IntSort(), IntSort(), BoolSort())
   has = Function('has', IntSort(), IntSort(), BoolSort())
@@ -151,7 +175,7 @@ def test_ll_sum_custom_function():
   
   fp = Fixedpoint()
   fp.declare_var(a,b,c,d,e,f,g,h,i,x,y,z)
-  fp.register_relation(list_sum, set_sum, list_len, set_len, inf_seq, cons, add, car, has, does_not_have)
+  fp.register_relation(list_sum, set_sum, list_len, set_len, cons, add, car, has, does_not_have)
   fp.fact(add(a, b, a + b))
   fp.rule(list_sum(a, 0), a <= 0)
   fp.rule(set_sum(a, 0), a <= 0)
@@ -165,32 +189,31 @@ def test_ll_sum_custom_function():
   fp.rule(set_len(a, i), [a > 0, cons(b, a - 1, a), does_not_have(a-1, b), set_len(a - 1, c), add(1, c, i)])
   fp.rule(set_len(a, i), [a > 0, cons(b, a - 1, a), has(a-1, b), set_len(a - 1, i)])
   fp.rule(has(a, b), [a > 0, cons(c, a - 1, a), Or(c == b, has(a - 1, b))])
-  # (cons a (inf-seq (+ a 1)))
-  fp.rule(inf_seq(a, b), [inf_seq(a+1, c), cons(a, c, a)])
   fp.fact(does_not_have(0, b))
   fp.rule(does_not_have(a, b), [a > 0, cons(c, a - 1, a), And(c != b, does_not_have(a - 1, b))])
   # build our list
-  fp.fact(cons(5, 0, 1))
-  fp.fact(cons(6, 1, 2))
-  fp.fact(cons(5, 2, 3))
-  fp.fact(cons(6, 3, 4))
+  L = 4 # anything above 10 and it really slows stuff down...
+  for x in range(L):
+    fp.fact(cons(5 if x % 2 == 0 else 6, x, x+1))
   # make assertions
   assert fp.query(list_sum(0, 0)) == sat
   assert fp.query(list_sum(2,12)) == unsat
   assert fp.query(list_sum(2,11)) == sat
   assert fp.query(list_sum(4,22)) == sat
   assert fp.query(list_sum(4,16)) == unsat
-  assert fp.query(set_sum(4,11)) == sat 
+  assert fp.query(set_sum(4,11)) == sat
   assert fp.query(set_sum(4,12)) == unsat
   assert fp.query(set_sum(4,16)) == unsat
+  assert fp.query(set_sum(L,11)) == sat
   assert fp.query(list_len(0, 0)) == sat
   assert fp.query(list_len(2,12)) == unsat
   assert fp.query(list_len(2,2)) == sat
   assert fp.query(list_len(4,4)) == sat
-  assert fp.query(list_len(4,3)) == unsat
+  assert fp.query(list_len(L,L)) == sat
   assert fp.query(set_len(4,2)) == sat 
   assert fp.query(set_len(4,1)) == unsat
   assert fp.query(set_len(4,3)) == unsat
+  assert fp.query(set_len(L,2)) == sat
   assert fp.query(car(1, 5)) == sat
   assert fp.query(car(1, 6)) == unsat
   assert fp.query(has(2, 5)) == sat
