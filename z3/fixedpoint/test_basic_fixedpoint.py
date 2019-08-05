@@ -42,6 +42,24 @@ def test_fp_ordering1():
   fp.fact(my_rel(f, g))
   assert fp.query(my_rel(d, h)) == sat
 
+def test_equivalent_functions():
+  to_15 = Function('to_15', IntSort(), IntSort(), BoolSort())
+  is_15 = Function('is_15', IntSort(), IntSort(), BoolSort())
+  n, m, p = Ints('n m p')
+
+  fp = Fixedpoint()
+
+  fp.declare_var(n,m,p)
+  fp.register_relation(to_15, is_15)
+
+  fp.fact(is_15(m, 15))
+  fp.fact(to_15(15, 15))
+  fp.rule(to_15(m, n), [m < 15, to_15(m + 1, n)])
+  fp.rule(to_15(m, n), [m > 15, to_15(m - 1, n)])
+
+  assert fp.query(Exists([m, n, p], And(to_15(m,n), is_15(m,p), n != p))) == unsat
+
+
 def test_mccarthy_91():
   mc = Function('mc', IntSort(), IntSort(), BoolSort())
   n, m, p = Ints('n m p')
@@ -139,8 +157,8 @@ def test_encoding_partial_application():
   P = Datatype('P')
   P.declare('P')
   P = P.create()
-  partial_add= Function('partial_add', IntSort(), P, BoolSort())
-  resolved_add=Function('resolved_add', P, IntSort(), IntSort(), BoolSort())
+  partial_add = Function('partial_add', IntSort(), P, BoolSort())
+  resolved_add = Function('resolved_add', P, IntSort(), IntSort(), BoolSort())
   fp = Fixedpoint()
   p, q = Consts('p q', P)
   x,y,z = Ints('x y z')
