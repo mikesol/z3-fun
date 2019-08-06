@@ -262,7 +262,7 @@ def test_negative_list_sum():
   fp.rule(list_sum(a, d), [a > 0, cons(b, a - 1, a), list_sum(a - 1, c), b + c == d])
   fp.rule(cons(a, b, b + 1), a < 0)
   assert fp.query(And(list_sum(a, b), a > 0, b < 0)) == sat
-  assert fp.query(And(list_sum(a, b), a > 0, b == 0)) == unsat
+  assert fp.query(And(list_sum(a, b), a > 0, b >= 0)) == unsat
 
 def test_list_elt_gt_1():
   list_sum = Function('list_sum', IntSort(), IntSort(), BoolSort())
