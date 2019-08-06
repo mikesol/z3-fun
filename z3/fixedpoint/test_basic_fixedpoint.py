@@ -210,40 +210,76 @@ def test_ll_sum_custom_function():
   fp.fact(does_not_have(0, b))
   fp.rule(does_not_have(a, b), [a > 0, cons(c, a - 1, a), And(c != b, does_not_have(a - 1, b))])
   # build our list
-  L = 4 # anything above 10 and it really slows stuff down...
-  for x in range(L):
-    fp.fact(cons(5 if x % 2 == 0 else 6, x, x+1))
+  #L = 4 # anything above 10 and it really slows stuff down...
+  #for x in range(L):
+  #  fp.fact(cons(5 if x % 2 == 0 else 6, x, x+1))
   # make assertions
-  assert fp.query(list_sum(0, 0)) == sat
-  assert fp.query(list_sum(2,12)) == unsat
-  assert fp.query(list_sum(2,11)) == sat
-  assert fp.query(list_sum(4,22)) == sat
-  assert fp.query(list_sum(4,16)) == unsat
-  assert fp.query(set_sum(4,11)) == sat
-  assert fp.query(set_sum(4,12)) == unsat
-  assert fp.query(set_sum(4,16)) == unsat
-  assert fp.query(set_sum(L,11)) == sat
-  assert fp.query(list_len(0, 0)) == sat
-  assert fp.query(list_len(2,12)) == unsat
-  assert fp.query(list_len(2,2)) == sat
-  assert fp.query(list_len(4,4)) == sat
-  assert fp.query(list_len(L,L)) == sat
-  assert fp.query(set_len(4,2)) == sat 
-  assert fp.query(set_len(4,1)) == unsat
-  assert fp.query(set_len(4,3)) == unsat
-  assert fp.query(set_len(L,2)) == sat
-  assert fp.query(car(1, 5)) == sat
-  assert fp.query(car(1, 6)) == unsat
-  assert fp.query(has(2, 5)) == sat
-  assert fp.query(has(2, 6)) == sat
-  assert fp.query(has(4, 6)) == sat
-  assert fp.query(does_not_have(4, 6)) == unsat
-  assert fp.query(has(2, 5)) == sat
-  assert fp.query(has(2, 4)) == unsat
-  assert fp.query(does_not_have(2, 4)) == sat
-  assert fp.query(has(0, 4)) == unsat
-  assert fp.query(has(0, 5)) == unsat
-  assert fp.query(has(1, 5)) == sat
+  # assert fp.query(list_sum(0, 0)) == sat
+  # assert fp.query(list_sum(2,12)) == unsat
+  # assert fp.query(list_sum(2,11)) == sat
+  # assert fp.query(list_sum(4,22)) == sat
+  # assert fp.query(list_sum(4,16)) == unsat
+  # assert fp.query(set_sum(4,11)) == sat
+  # assert fp.query(set_sum(4,12)) == unsat
+  # assert fp.query(set_sum(4,16)) == unsat
+  # assert fp.query(set_sum(L,11)) == sat
+  # assert fp.query(list_len(0, 0)) == sat
+  # assert fp.query(list_len(2,12)) == unsat
+  # assert fp.query(list_len(2,2)) == sat
+  # assert fp.query(list_len(4,4)) == sat
+  # assert fp.query(list_len(L,L)) == sat
+  # assert fp.query(set_len(4,2)) == sat 
+  # assert fp.query(set_len(4,1)) == unsat
+  # assert fp.query(set_len(4,3)) == unsat
+  # assert fp.query(set_len(L,2)) == sat
+  # assert fp.query(car(1, 5)) == sat
+  # assert fp.query(car(1, 6)) == unsat
+  # assert fp.query(has(2, 5)) == sat
+  # assert fp.query(has(2, 6)) == sat
+  # assert fp.query(has(4, 6)) == sat
+  # assert fp.query(does_not_have(4, 6)) == unsat
+  # assert fp.query(has(2, 5)) == sat
+  # assert fp.query(has(2, 4)) == unsat
+  # assert fp.query(does_not_have(2, 4)) == sat
+  # assert fp.query(has(0, 4)) == unsat
+  # assert fp.query(has(0, 5)) == unsat
+  # assert fp.query(has(1, 5)) == sat
+  # fp.rule(cons(a, b, c), a < 0)
+  fp.rule(cons(a, b, b + 1), a < 0)
+  #fp.fact(cons(-1, 1, 2))
+  assert fp.query(And(list_sum(a, b), a > 0, b < 0)) == sat
+  assert fp.query(And(list_sum(a, b), a > 0, b == 0)) == unsat
+
+def test_negative_list_sum():
+  list_sum = Function('list_sum', IntSort(), IntSort(), BoolSort())
+  cons = Function('cons', IntSort(), IntSort(), IntSort(), BoolSort())
+  a,b,c,d = Ints('a b c d')
+  
+  fp = Fixedpoint()
+  fp.declare_var(a,b,c,d)
+  fp.register_relation(list_sum, cons)
+  fp.rule(list_sum(a, 0), a == 0)
+  fp.rule(list_sum(a, d), [a > 0, cons(b, a - 1, a), list_sum(a - 1, c), b + c == d])
+  fp.rule(cons(a, b, b + 1), a < 0)
+  assert fp.query(And(list_sum(a, b), a > 0, b < 0)) == sat
+  assert fp.query(And(list_sum(a, b), a > 0, b == 0)) == unsat
+
+def test_list_elt_gt_1():
+  list_sum = Function('list_sum', IntSort(), IntSort(), BoolSort())
+  list_len = Function('list_len', IntSort(), IntSort(), BoolSort())
+  cons = Function('cons', IntSort(), IntSort(), IntSort(), BoolSort())
+  a,b,c,d = Ints('a b c d')
+  
+  fp = Fixedpoint()
+  fp.declare_var(a,b,c,d)
+  fp.register_relation(list_sum, list_len, cons)
+  fp.rule(list_sum(a, 0), a == 0)
+  fp.rule(list_sum(a, d), [a > 0, cons(b, a - 1, a), list_sum(a - 1, c), b + c == d])
+  fp.rule(list_len(a, 0), a == 0)
+  fp.rule(list_len(a, d), [a > 0, cons(b, a - 1, a), list_len(a - 1, c), 1 + c == d])
+  fp.rule(cons(a, b, b + 1), a < 1)
+  assert fp.query(And(list_sum(a, b), list_len(a, c), a > 0, b >= c)) == unsat
+  assert fp.query(And(list_sum(a, b), list_len(a, c), a > 0, b < c)) == sat
 
 @pytest.mark.skip
 def test_aoc():
