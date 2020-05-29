@@ -131,28 +131,6 @@ def test_mseq_hangs():
   assert fp.query(mc(5,120)) == sat
   assert fp.query(mc(5,24)) == unsat
 
-#z3.z3types.Z3Exception: b'recursive predicate (= (:var 3) (cdr (:var 0))) occurs nested in the body of a rule'
-@pytest.mark.skip
-def test_ll_len_with_cdr():
-  ll = Datatype('ll')
-  ll.declare('end')
-  ll.declare('cons', ('car', IntSort()), ('cdr', ll))
-  ll = ll.create()
-  length = Function('length', ll, IntSort(), BoolSort())
-  add = Function('add', IntSort(), IntSort(), IntSort(), BoolSort())
-  x,y,z = Ints('x y z')
-  c, d, e = Consts('c d e', ll)
-  lc = Const('lc', ArraySort(ll,ll))
-
-  fp = Fixedpoint()
-  fp.declare_var(x,y,z,c,d)
-  fp.register_relation(length, add, ll.cdr)
-  fp.fact(add(x,y,x+y))
-  fp.rule(length(c, 0), ll.is_end(c))
-  fp.rule(length(c, x), [ll.is_cons(c), add(1, z, x), length(ll.cdr(c), z)])
-  assert fp.query(length(ll.end, 0)) == sat
-  assert fp.query(length(ll.cons(0, ll.end), 1)) == sat
-
 def test_encoding_partial_application():
   P = Datatype('P')
   P.declare('P')
@@ -250,6 +228,51 @@ def test_ll_sum_custom_function():
   assert fp.query(And(list_sum(a, b), a > 0, b < 0)) == sat
   assert fp.query(And(list_sum(a, b), a > 0, b == 0)) == unsat
 
+def test_avg():
+  list_sum = Function('list_sum', IntSort(), IntSort(), BoolSort())
+  cons = Function('cons', IntSort(), IntSort(), IntSort(), BoolSort())
+  a,b,c,d,e = Ints('a b c d e')
+  
+  fp = Fixedpoint()
+  fp.declare_var(a,b,c,d,e)
+  fp.register_relation(list_sum, cons)
+  fp.rule(list_sum(a, 0), a == 0)
+  fp.rule(list_sum(a, d), [a > 0, cons(b, a - 1, a), list_sum(a - 1, c), b + c == d])
+  fp.fact(cons(a, b, b + 1))
+  '''
+  assert fp.query(And(list_sum(a, b),
+    list_sum(c, d),
+    c > 0,
+    a == c + 1, # a is 1 longer than c
+    cons(e, c, a),
+    (((e * d) - (c * d) )**2) < (((e * b) - (a * b))**2)
+    )) == unsat
+  assert fp.query(And(list_sum(a, b),
+    list_sum(c, d),
+    c > 0,
+    a == c + 1, # a is 1 longer than c
+    cons(e, c, a),
+    (((e * d) - (c * d) )**2) >= (((e * b) - (a * b))**2)
+    )) == sat
+  '''
+
+def test_negative_list_sum_ll():
+  ll = Datatype('ll')
+  ll.declare('empty')
+  ll.declare('cons', ('car', IntSort()), ('cdr', ll))
+  ll = ll.create()
+  list_sum = Function('list_sum', ll, IntSort(), BoolSort())
+  a,e = Consts('a e', ll)
+  b,c,d = Ints('b c d')
+  
+  fp = Fixedpoint()
+  fp.declare_var(a,b,c,d,e)
+  fp.register_relation(list_sum)
+  fp.rule(list_sum(a, 0), a == ll.empty)
+  fp.rule(list_sum(a, d), [a != ll.empty, b < 0, ll.cons(b, e) == a, list_sum(e, c), b + c == d])
+  assert fp.query(And(list_sum(a, b), a != ll.empty, b < 0)) == sat
+  assert fp.query(And(list_sum(a, b), a != ll.empty, b >= 0)) == unsat
+
 def test_negative_list_sum():
   list_sum = Function('list_sum', IntSort(), IntSort(), BoolSort())
   cons = Function('cons', IntSort(), IntSort(), IntSort(), BoolSort())
@@ -265,21 +288,69 @@ def test_negative_list_sum():
   assert fp.query(And(list_sum(a, b), a > 0, b >= 0)) == unsat
 
 def test_list_elt_gt_1():
-  list_sum = Function('list_sum', IntSort(), IntSort(), BoolSort())
-  list_len = Function('list_len', IntSort(), IntSort(), BoolSort())
-  cons = Function('cons', IntSort(), IntSort(), IntSort(), BoolSort())
-  a,b,c,d = Ints('a b c d')
+  ll = Datatype('ll')
+  ll.declare('empty')
+  ll.declare('cons', ('car', IntSort()), ('cdr', ll))
+  ll = ll.create()
+  list_sum = Function('list_sum', ll, IntSort(), BoolSort())
+  list_len = Function('list_len', ll, IntSort(), BoolSort())
+  a,e = Consts('a e', ll)
+  b,c,d = Ints('b c d')
   
   fp = Fixedpoint()
-  fp.declare_var(a,b,c,d)
-  fp.register_relation(list_sum, list_len, cons)
-  fp.rule(list_sum(a, 0), a == 0)
-  fp.rule(list_sum(a, d), [a > 0, cons(b, a - 1, a), list_sum(a - 1, c), b + c == d])
-  fp.rule(list_len(a, 0), a == 0)
-  fp.rule(list_len(a, d), [a > 0, cons(b, a - 1, a), list_len(a - 1, c), 1 + c == d])
-  fp.rule(cons(a, b, b + 1), a < 1)
-  assert fp.query(And(list_sum(a, b), list_len(a, c), a > 0, b >= c)) == unsat
-  assert fp.query(And(list_sum(a, b), list_len(a, c), a > 0, b < c)) == sat
+  fp.declare_var(a,b,c,d,e)
+  fp.register_relation(list_sum, list_len)
+  fp.rule(list_sum(a, 0), a == ll.empty)
+  fp.rule(list_sum(a, d), [a != ll.empty, b < 1, ll.cons(b, e) == a, list_sum(e, c), b + c == d])
+  fp.rule(list_len(a, 0), a == ll.empty)
+  fp.rule(list_len(a, d), [a != ll.empty, b < 1, ll.cons(b, e) == a, list_len(e, c), 1 + c == d])
+  assert fp.query(And(list_sum(a, b), list_len(a, c), a != ll.empty, b >= c)) == unsat
+  assert fp.query(And(list_sum(a, b), list_len(a, c), a != ll.empty, b < c)) == sat
+
+# freezes
+@pytest.mark.skip
+def test_list_rev():
+  ll = Datatype('ll')
+  ll.declare('empty')
+  ll.declare('cons', ('car', IntSort()), ('cdr', ll))
+  ll = ll.create()
+  list_sum = Function('list_sum', ll, IntSort(), BoolSort())
+  list_tran = Function('list_tran', ll, ll, ll, BoolSort())
+  list_rev = Function('list_rev', ll, ll, BoolSort())
+  a,e,f,g,h = Consts('a e f g h', ll)
+  b,c,d = Ints('b c d')
+  
+  fp = Fixedpoint()
+  fp.declare_var(a,b,c,d,e,f,g,h)
+  fp.register_relation(list_sum, list_rev, list_tran)
+  fp.rule(list_sum(a, 0), a == ll.empty)
+  fp.rule(list_sum(a, d), [a != ll.empty, b < 1, ll.cons(b, e) == a, list_sum(e, c), b + c == d])
+  fp.fact(list_tran(ll.empty, e, e))
+  fp.rule(list_tran(a,e,h), [ll.cons(b, f) == a, ll.cons(b, e) == g, list_tran(f, g, h)])
+  fp.rule(list_rev(a,e), list_tran(a, ll.empty, e))
+  assert fp.query(list_rev(a,e), list_rev(e, f), a != f) == unsat
+
+# also freezes
+@pytest.mark.skip
+def test_list_rev():
+  ll = Datatype('ll')
+  ll.declare('empty')
+  ll.declare('cons', ('car', IntSort()), ('cdr', ll))
+  ll = ll.create()
+  list_app = Function('list_app', ll, ll, ll, BoolSort())
+  list_rev = Function('list_rev', ll, ll, BoolSort())
+  a,e,f,g,h = Consts('a e f g h', ll)
+  b,c,d = Ints('b c d')
+  
+  fp = Fixedpoint()
+  fp.declare_var(a,b,c,d,e,f,g,h)
+  fp.register_relation(list_rev, list_app)
+  fp.fact(list_app(ll.empty, e, e))
+  fp.fact(list_app(e, ll.empty, e))
+  fp.rule(list_app(a,e,h), [ll.cons(b, f) == a, list_app(f, e, g), ll.cons(b, g) == h])
+  fp.fact(list_rev(ll.empty,ll.empty))
+  fp.rule(list_rev(a,e), [ll.cons(b, f) == a, ll.cons(b, ll.empty) == g, list_rev(f, h), list_app(h, g, e)])
+  assert fp.query(list_rev(a,e), list_rev(e, f), a != f) == unsat
 
 @pytest.mark.skip
 def test_aoc():
